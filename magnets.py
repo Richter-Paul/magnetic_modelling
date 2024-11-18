@@ -1,42 +1,58 @@
 import numpy as np
 
 EARTH_RAD = 6.3e6
-MAG_PERM = 1
+MAG_PERM = 1.26e-6
 M = 1
+CENTRE = np.zeros(3)
 
 
-def change_basis(vec, o1, o2):
+'''
+NOTE on vectors:
+
+Throughout this code, there are cartesian vectors, 'vec', and spherical vectors, 'sphvec'.
+vec are simple [x, y, z], sphvec are [modulus (or r), latitude, longitude].
+
+It's worth noting that sphvec doesn't actually follow the math OR physics conventions for
+spherical vectors; math would normally use [modulus, longitude, colatitude], 
+and physics would use [modulus, colatitude, longitude].
+'''
+
+
+def magnitude(vec):
     '''
-    Changes the basis of a vector from its location to some objective origin
+    Returns the magnitude/modulus of a cartesian vector, vec. 
+    '''
+    return np.sqrt(np.dot(vec, vec))
+
+
+def change_origin(vec, o1, o2):
+    '''
+    Returns a vector from a new 'origin' (o2) to the tip of the original vector (vec).
+    This is all for cartesian. 
 
     vec: Vector having its basis changed.
     o1: The old 'origin' of vec.
     o2: The new 'origin' of vec 
     '''
+
     return vec + o1 - o2
 
 
-def magnitude(vec):
-    '''
-    Returns the magnitude of a cartesian vector, vec. 
-    '''
-    return np.sqrt(np.dot(vec, vec))
-
-
 def cartesian_to_spherical(vec):
+
     r = magnitude(vec)
     latitude = np.arcsin(vec[2]/r)
-    longitude = np.sign(vec[0])*np.arccos(vec[0]/(np.sqrt(vec[0]**2 + vec[1]**2)))
+    longitude = np.sign(vec[0]) * np.arccos(vec[0]/(np.sqrt(vec[0]**2 + vec[1]**2)))
 
     return np.array([r, latitude, longitude])
 
 
-def spherical_to_cartesian(r, latitude, longitude):
+def spherical_to_cartesian(sphvec):
     
     return np.array([
-        r*np.cos(latitude)*np.cos(longitude),
-        r*np.cos(latitude)*np.sin(longitude),
-        r*np.sin(latitude)
+        sphvec[0]*np.cos(sphvec[1])*np.cos(sphvec[2]),
+        sphvec[0]*np.cos(sphvec[1])*np.sin(sphvec[2]),
+        sphvec[0]*np.sin(sphvec[1])
         ])
 
 
@@ -64,56 +80,53 @@ def latitudehat(latitude, longitude):
                      ])
 
 
-def monopole_field(sphvec):
+def monopole(sphvec):
+    '''
+    Returns the force of a magnetic monopole at a longitude and latitude
+    relative to the monopole center.
+    '''
+
     return MAG_PERM/(4*(np.pi)) * M/(sphvec[0]**2) * rhat(sphvec[1], sphvec[2])
 
 
-def northpole(pos, latitude, longitude):
+def magnetic_field_cart(northpos, southpos, sphvec):
     '''
+    Converts the effect of two monopoles at arbitrary locations to their net
+    effect at the given latitude and longitude ("the point") on the Earth's surface.
+
+    1. Converts the point to a cartesian coordinate
+    2. Finds the cartesian position of the point relative to the poles
+    3. Finds the spherical position of the point relative to the poles
+    4. Finds the magnetic fields from the poles
     
+    Finally, returns the vector sum of the fields. 
     '''
-    
-    centre = np.array([0, 0, 0])
 
     # 1.
-    earth_cart = spherical_to_cartesian(EARTH_RAD, latitude, longitude)
+    vec = spherical_to_cartesian(sphvec)
     # 2.
-    monopole_position_cart = change_basis(earth_cart, centre, pos)
+    northpole_pos_cart = change_origin(vec, CENTRE, northpos)
+    southpole_pos_cart = change_origin(vec, CENTRE, southpos)
     # 3.
-    monopole_position_sph = cartesian_to_spherical(monopole_position_cart)
+    northpole_pos_sph = cartesian_to_spherical(northpole_pos_cart)
+    southpole_pos_sph = cartesian_to_spherical(southpole_pos_cart)
     # 4.
-    monopole_f = monopole_field(monopole_position_sph)
+    northpole = monopole(northpole_pos_sph)
+    southpole = -monopole(southpole_pos_sph)
 
-    return monopole_f
+    return northpole + southpole
 
 
-def southpole(pos, latitude, longitude):
+def magnetic_field_sph(northpos, southpos, sphvec):
     '''
-    Same as northpole, but with a minus sign.
+    Returns the magnetic field in radial and latitude basis vectors.
     '''
-    
-    centre = np.array([0, 0, 0])
+    Rhat = rhat(sphvec[1], sphvec[2])
+    Latitudehat = latitudehat(sphvec[1], sphvec[2])
+    cartmag = magnetic_field_cart(northpos, southpos, sphvec)
 
-    # 1.
-    earth_cart = spherical_to_cartesian(EARTH_RAD, latitude, longitude)
-    # 2.
-    monopole_cart = change_basis(earth_cart, centre, pos)
-    # 3.
-    monopole_sph = cartesian_to_spherical(monopole_cart)
-    # 4.
-    monopole_f = monopole_field(monopole_sph)
-
-    return -monopole_f
+    return np.array([np.dot(cartmag, Rhat), -np.dot(cartmag, Latitudehat)])
 
 
-def magnetic_field_cart(northpos, southpos, latitude, longitude):
-    return northpole(northpos, latitude, longitude) + southpole(southpos, latitude, longitude)
-
-
-def magnetic_field_sph(northpos, southpos, latitude, longitude):
-    Rhat = rhat(latitude, longitude)
-    Latitudehat = latitudehat(latitude, longitude)
-
-    cartmag = magnetic_field_cart(northpos, southpos, latitude, longitude)
-
-    return np.array([np.dot(cartmag, Rhat), np.dot(cartmag, Latitudehat)])
+def TMI(magfieldsph):
+    return magnitude(magfieldsph)

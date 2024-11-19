@@ -1,4 +1,5 @@
 import numpy as np
+import astropy.coordinates as coords
 
 EARTH_RAD = 6.3e6
 MAG_PERM = 1.26e-6
@@ -42,7 +43,7 @@ def cartesian_to_spherical(vec):
 
     r = magnitude(vec)
     latitude = np.arcsin(vec[2]/r)
-    longitude = np.sign(vec[0]) * np.arccos(vec[0]/(np.sqrt(vec[0]**2 + vec[1]**2)))
+    longitude = np.sign(vec[1])*np.arccos(vec[0]/(np.sqrt(vec[0]**2 + vec[1]**2)))
 
     return np.array([r, latitude, longitude])
 
@@ -130,3 +131,7 @@ def magnetic_field_sph(northpos, southpos, sphvec):
 
 def TMI(magfieldsph):
     return magnitude(magfieldsph)
+
+
+def inclination(magfieldsph):
+    return np.arctan(magfieldsph[0]/magfieldsph[1])

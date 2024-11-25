@@ -129,8 +129,8 @@ def magnetic_field_sph(northpos, southpos, sphvec):
     return np.array([np.dot(cartmag, Rhat), -np.dot(cartmag, Latitudehat)])
 
 
-def TMI(magfieldsph):
-    return magnitude(magfieldsph)
+def TMI(magfield):
+    return magnitude(magfield)
 
 
 def inclination(magfieldsph):

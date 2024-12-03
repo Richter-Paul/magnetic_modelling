@@ -4,8 +4,13 @@ import magnets as m
 
 
 # Heatmap Test
-northpos = np.array([2, 10, 10])
-southpos = np.array([-2, -10, -10])
+northpos1 = np.array([1, 0, 1])
+southpos1 = np.array([-1, 0, -1])
+m1 = 3e31
+northpos2 = np.array([0, -0.5, 1])
+southpos2 = np.array([0, 0.5, -1])
+m2 = 0
+#m2 = 2e22
 
 lats = np.linspace(-np.pi/2, np.pi/2, 100)
 longs = np.linspace(0, 2*np.pi, 100)
@@ -17,22 +22,28 @@ TMI = np.zeros((len(lats), len(longs)))
 for i in range(len(lats)):
     for j in range(len(longs)):
         point = np.array([m.EARTH_RAD, lats[i], longs[j]])
-        cart[i, j] = m.magnetic_field_cart(northpos, southpos, point)
+        cart[i, j] = m.magnetic_field_cart(northpos1, southpos1, m1, point) + m.magnetic_field_cart(northpos2, southpos2, m2, point)
         TMI[i, j] = m.TMI(cart[i, j])
 
 
-# This just flips the y-axis (latitudes) for plotting
-flipTMI = np.zeros((len(longs), len(lats)))
+# This flips the x-axis (latitudes) because imshow plots upside down :(
+flipTMI = np.zeros((len(lats), len(longs)))
 for i in range(len(TMI[0])):
     for j in range(len(TMI[1])):
-        flipTMI[i, j] = TMI[i, len(TMI[1]) - 1 - j]
+        flipTMI[i, j] = TMI[len(TMI[0]) - 1 - i, j]
 
 
-plt.imshow(flipTMI, interpolation='nearest')
 
-cs = plt.contour(flipTMI, levels=[1e-26, 1.2e-26, 1.4e-26, 1.6e-26, 1.66e-26],
-    colors=['#808080', '#A0A0A0', '#C0C0C0'], extend='both')
-cs.cmap.set_over('red')
-cs.cmap.set_under('blue')
-cs.changed()
+
+
+#plt.imshow(flipTMI, interpolation='nearest')
+
+img = plt.imread("mercator.jpeg")
+x = range(100)
+
+fig, ax = plt.subplots()
+ax.imshow(img, extent=[0, 100, 0, 100])
+cs = ax.contour(flipTMI, levels=[2e4, 4e4, 5e4, 6e4],
+    colors=['#FF0000'], extend='both')
+ax.clabel(cs, fontsize=10)
 plt.show()

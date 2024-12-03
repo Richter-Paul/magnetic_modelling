@@ -3,7 +3,6 @@ import astropy.coordinates as coords
 
 EARTH_RAD = 6.3e6
 MAG_PERM = 1.26e-6
-M = 1
 CENTRE = np.zeros(3)
 
 
@@ -16,6 +15,8 @@ vec are simple [x, y, z], sphvec are [modulus (or r), latitude, longitude].
 It's worth noting that sphvec doesn't actually follow the math OR physics conventions for
 spherical vectors; math would normally use [modulus, longitude, colatitude], 
 and physics would use [modulus, colatitude, longitude].
+
+In this scheme, 0 longitude is the Prime Meridian
 '''
 
 
@@ -81,16 +82,16 @@ def latitudehat(latitude, longitude):
                      ])
 
 
-def monopole(sphvec):
+def monopole(sphvec, m):
     '''
     Returns the force of a magnetic monopole at a longitude and latitude
     relative to the monopole center.
     '''
 
-    return MAG_PERM/(4*(np.pi)) * M/(sphvec[0]**2) * rhat(sphvec[1], sphvec[2])
+    return MAG_PERM/(4*(np.pi)) * m/(sphvec[0]**2) * rhat(sphvec[1], sphvec[2])
 
 
-def magnetic_field_cart(northpos, southpos, sphvec):
+def magnetic_field_cart(northpos, southpos, m, sphvec):
     '''
     Converts the effect of two monopoles at arbitrary locations to their net
     effect at the given latitude and longitude ("the point") on the Earth's surface.
@@ -112,19 +113,19 @@ def magnetic_field_cart(northpos, southpos, sphvec):
     northpole_pos_sph = cartesian_to_spherical(northpole_pos_cart)
     southpole_pos_sph = cartesian_to_spherical(southpole_pos_cart)
     # 4.
-    northpole = monopole(northpole_pos_sph)
-    southpole = -monopole(southpole_pos_sph)
+    northpole = monopole(northpole_pos_sph, m)
+    southpole = -monopole(southpole_pos_sph, m)
 
     return northpole + southpole
 
 
-def magnetic_field_sph(northpos, southpos, sphvec):
+def magnetic_field_sph(northpos, southpos, m, sphvec):
     '''
     Returns the magnetic field in radial and latitude basis vectors.
     '''
     Rhat = rhat(sphvec[1], sphvec[2])
     Latitudehat = latitudehat(sphvec[1], sphvec[2])
-    cartmag = magnetic_field_cart(northpos, southpos, sphvec)
+    cartmag = magnetic_field_cart(northpos, southpos, m, sphvec)
 
     return np.array([np.dot(cartmag, Rhat), -np.dot(cartmag, Latitudehat)])
 
